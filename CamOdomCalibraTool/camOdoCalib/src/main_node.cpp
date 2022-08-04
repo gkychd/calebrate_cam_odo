@@ -22,7 +22,7 @@
 #include "calc_cam_pose/calcCamPose.h"
 
 #include "solveQyx.h" 
-
+#define PI 3.1415926535897931
 typedef boost::shared_ptr<nav_msgs::Odometry const> OdomConstPtr;
 
 std::queue<OdomConstPtr> odo_buf;
@@ -143,9 +143,10 @@ void calc_process(const CameraPtr &cam)
           Eigen::Matrix3d Rwc = Twc.block<3, 3>(0, 0);
           Eigen::Vector3d twc = Twc.block<3, 1>(0, 3);
           Eigen::Matrix3d Rcc1;
+          double angle = PI / 4;
           Rcc1 <<  1, 0, 0,
-                            0, sqrt(2)/2, -sqrt(2)/2,
-                            0, sqrt(2)/2, sqrt(2)/2;
+                            0, cos(angle), -sin(angle),
+                            0, sin(angle), cos(angle);
           Eigen::Matrix3d Rwc1;
           Rwc1 = Rwc * Rcc1;
           if(fisrt_frame)

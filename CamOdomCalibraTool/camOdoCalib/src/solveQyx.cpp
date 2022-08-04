@@ -139,9 +139,10 @@ void SolveQyx::refineExPara(std::vector<data_selection::sync_data> sync_result,
 
     Eigen::Matrix3d Rrc = Eigen::AngleAxisd(internelPara.l[2], Eigen::Vector3d::UnitZ() ) * Ryx;
     Eigen::Matrix3d Rc0c;
+    double angle = Pi / 4;
     Rc0c << 1, 0, 0,
-                    0, sqrt(2)/2, -sqrt(2)/2,
-                    0, sqrt(2)/2, sqrt(2)/2;
+                    0, cos(angle), -sin(angle),
+                    0, -sin(angle), cos(angle);
     Eigen::Matrix3d Rrc0 = Rrc * Rc0c.inverse();
     Eigen::Vector3d rotation_vector_rc ;
     q2Euler_zyx(Eigen::Quaterniond(Rrc0) , rotation_vector_rc);
