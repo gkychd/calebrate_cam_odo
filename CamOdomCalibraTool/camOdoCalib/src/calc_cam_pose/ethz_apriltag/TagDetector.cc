@@ -49,7 +49,7 @@ std::vector<TagDetection> TagDetector::extractTags(const cv::Mat &image) {
   std::pair<int, int> opticalCenter(width / 2, height / 2);
 
 #ifdef DEBUG_APRIL
-#if 0
+#if 1
   { // debug - write
     int height_ = fimOrig.getHeight();
     int width_  = fimOrig.getWidth();
@@ -146,7 +146,7 @@ std::vector<TagDetection> TagDetector::extractTags(const cv::Mat &image) {
   FloatImage fimTheta(fimSeg.getWidth(), fimSeg.getHeight());
   FloatImage fimMag(fimSeg.getWidth(), fimSeg.getHeight());
 
-  for (int y = 1; y < fimSeg.getHeight() - 1; y++) {
+  for (int y = 1; y < fimSeg.getHeight() - 1; y++) {                            //给每个像素点赋属性 角度属性以及块属性
     for (int x = 1; x < fimSeg.getWidth() - 1; x++) {
       float Ix = fimSeg.get(x + 1, y) - fimSeg.get(x - 1, y);
       float Iy = fimSeg.get(x, y + 1) - fimSeg.get(x, y - 1);
@@ -164,6 +164,7 @@ std::vector<TagDetection> TagDetector::extractTags(const cv::Mat &image) {
   }
 
 #ifdef DEBUG_APRIL
+#if 0
   int height_ = fimSeg.getHeight();
   int width_ = fimSeg.getWidth();
   cv::Mat image(height_, width_, CV_8UC3);
@@ -184,6 +185,7 @@ std::vector<TagDetection> TagDetector::extractTags(const cv::Mat &image) {
       }
     }
   }
+#endif
 #endif
 
   //================================================================
@@ -223,7 +225,8 @@ std::vector<TagDetection> TagDetector::extractTags(const cv::Mat &image) {
         tmax[y * width + x] = theta0;
 
         // Calculates then adds edges to 'vector<Edge> edges'
-        Edge::calcEdges(theta0, x, y, fimTheta, fimMag, edges, nEdges);
+        Edge::calcEdges(theta0, x, y, fimTheta, fimMag, edges, nEdges); //一个点最多四条边，当邻接点与向前点的theta差以及mag差大于0，则构成一条边，该边的cost属性即为差值，pixelIdxA为当前像素索引
+                                                                                                                                            //pixelIdB为临接像素索引
 
         // XXX Would 8 connectivity help for rotated tags?
         // Probably not much, so long as input filtering hasn't been disabled.
@@ -231,8 +234,9 @@ std::vector<TagDetection> TagDetector::extractTags(const cv::Mat &image) {
     }
 
     edges.resize(nEdges);
-    std::stable_sort(edges.begin(), edges.end());
-    Edge::mergeEdges(edges, uf, tmin, tmax, mmin, mmax);
+    std::stable_sort(edges.begin(), edges.end());                                       //根据cost大小从小到大排序，不改变相同值的顺序
+    Edge::mergeEdges(edges, uf, tmin, tmax, mmin, mmax);              //将像素点进行融合聚类（权重一样大时，B吸收A，其余的权重大的吸收权重小的，像素点之间存在辺才会进行融合），
+                                                                                                                                      //根据邻接theta与mag的大小，更新tmin、tmax、mmin、mmax的值
   }
 
   //================================================================
@@ -240,14 +244,14 @@ std::vector<TagDetection> TagDetector::extractTags(const cv::Mat &image) {
   // cluster.
   // We will soon fit lines (segments) to these points.
 
-  std::map<int, std::vector<XYWeight>> clusters;
+  std::map<int, std::vector<XYWeight>> clusters;                        //1.聚类索引 2. 聚类中的所有点x、y、归一化像素值
   for (int y = 0; y + 1 < fimSeg.getHeight(); y++) {
     for (int x = 0; x + 1 < fimSeg.getWidth(); x++) {
       if (uf.getSetSize(y * fimSeg.getWidth() + x) <
-          Segment::minimumSegmentSize)
+          Segment::minimumSegmentSize)  //聚类中至少需要4个点
         continue;
 
-      int rep = (int)uf.getRepresentative(y * fimSeg.getWidth() + x);
+      int rep = (int)uf.getRepresentative(y * fimSeg.getWidth() + x);    //聚类的核心点索引
 
       std::map<int, std::vector<XYWeight>>::iterator it = clusters.find(rep);
       if (it == clusters.end()) {
@@ -269,14 +273,14 @@ std::vector<TagDetection> TagDetector::extractTags(const cv::Mat &image) {
     GLineSegment2D gseg = GLineSegment2D::lsqFitXYW(points);
 
     // filter short lines
-    float length = MathUtil::distance2D(gseg.getP0(), gseg.getP1());
-    if (length < Segment::minimumLineLength) continue;
+    float length = MathUtil::distance2D(gseg.getP0(), gseg.getP1()); //计算直线的最大长度
+    if (length < Segment::minimumLineLength) continue;    //长度需>=4
 
     Segment seg;
     float dy = gseg.getP1().second - gseg.getP0().second;
     float dx = gseg.getP1().first - gseg.getP0().first;
 
-    float tmpTheta = std::atan2(dy, dx);
+    float tmpTheta = std::atan2(dy, dx);  
 
     seg.setTheta(tmpTheta);
     seg.setLength(length);
@@ -327,9 +331,9 @@ std::vector<TagDetection> TagDetector::extractTags(const cv::Mat &image) {
   }
 
 #ifdef DEBUG_APRIL
-#if 0
+#if 1
   {
-    for (vector<Segment>::iterator it = segments.begin(); it!=segments.end(); it++) {
+    for (std::vector<Segment>::iterator it = segments.begin(); it!=segments.end(); it++) {
       long int r = random();
       cv::line(image,
                cv::Point2f(it->getX0(), it->getY0()),
@@ -440,6 +444,7 @@ std::vector<TagDetection> TagDetector::extractTags(const cv::Mat &image) {
                  cv::Scalar(0, 255, 0, 0), 1);
     }
     cv::imshow("debug_april", image);
+    //cv::waitKey(200);
   }
 #endif
 
@@ -554,7 +559,9 @@ std::vector<TagDetection> TagDetector::extractTags(const cv::Mat &image) {
   }
 
 #ifdef DEBUG_APRIL
-  { cv::imshow("debug_april", image); }
+  { cv::imshow("debug_april", image); 
+    cv::waitKey(5);
+  }
 #endif
 
   //================================================================

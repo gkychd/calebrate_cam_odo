@@ -30,7 +30,7 @@ float GLine2D::getLineCoordinate(const std::pair<float, float>& pt) {
 
 std::pair<float, float> GLine2D::getPointOfCoordinate(float coord) {
   normalizeP();
-  return std::pair<float, float>(p.first + coord * dx, p.second + coord * dy);
+  return std::pair<float, float>(p.first + coord * dx, p.second + coord * dy); 
 }
 
 std::pair<float, float> GLine2D::intersectionWith(const GLine2D& line) const {
@@ -110,8 +110,8 @@ void GLine2D::normalizeP() {
     normalizeSlope();
     // we already have a point (P) on the line, and we know the line vector U
     // and its perpendicular vector V: so, P'=P.*V *V
-    float dotprod = -dy * p.first + dx * p.second;
-    p = std::pair<float, float>(-dy * dotprod, dx * dotprod);
+    float dotprod = -dy * p.first + dx * p.second; //聚类中点与坐标原点的距离，在法线方向上的投影长度
+    p = std::pair<float, float>(-dy * dotprod, dx * dotprod);//得到聚类中点沿着与法线垂直的方向投影到法线之后的坐标
     didNormalizeP = true;
   }
 }

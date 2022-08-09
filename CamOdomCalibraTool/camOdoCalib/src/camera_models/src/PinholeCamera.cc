@@ -362,7 +362,7 @@ void PinholeCamera::liftProjective(const Eigen::Vector2d &p,
   double rho2_d, rho4_d, radDist_d, Dx_d, Dy_d, inv_denom_d;
   // double lambda;
 
-  // Lift points to normalised plane
+  // Lift points to normalised plane  将像素点投影到归一化平面
   mx_d = m_inv_K11 * p(0) + m_inv_K13;
   my_d = m_inv_K22 * p(1) + m_inv_K23;
 

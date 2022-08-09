@@ -31,7 +31,7 @@ std::mutex m_buf;
 bool hasImg = false ;//zdf
 std::vector<data_selection::odo_data> odoDatas;
 std::vector<data_selection::cam_data> camDatas;
-
+std::vector<bool> isCalOKvec;
 //record the first frame calculated successfully
 bool fisrt_frame = true;
 Eigen::Matrix3d Rwc0;
@@ -52,17 +52,20 @@ void wheel_callback(const OdomConstPtr &odo_msg)
       data_selection::odo_data odo_tmp;
 
     odo_tmp.time = time;
-    odo_tmp.v_left = linear[0] / 0.1 - angular[2]*0.56 / (2*0.1);// linear velcity of x axis           0.1为左轮径  0.56为轮距
-    odo_tmp.v_right = linear[0] / 0.1 + angular[2]*0.56 / (2*0.1);// angular velcity of z axis   0.1为右轮径  0.56为轮距
+    odo_tmp.v_left = linear[0] / 0.038 - angular[2]*0.232 / (2*0.038);// linear velcity of x axis           0.038为左轮径  0.232为轮距
+    odo_tmp.v_right = linear[0] / 0.038 + angular[2]*0.232 / (2*0.038);// angular velcity of z axis   0.038为右轮径  0.232为轮距
     odoDatas.push_back(odo_tmp);
+    std::cout << "**************odo size = " << odoDatas.size() << std::endl;
   }
 
 void image_callback(const sensor_msgs::ImageConstPtr &img_msg)
 {
+  std::cout << "image received" << std::endl;
   if(!halfFreq)
   {
     m_buf.lock();
     img_buf.push(img_msg);
+    std::cout << "*************image receive size = " << img_buf.size() << std::endl;
     m_buf.unlock(); 
   }
   else
@@ -96,6 +99,8 @@ cv::Mat getImageFromMsg(const sensor_msgs::ImageConstPtr &img_msg)
     ptr = cv_bridge::toCvCopy(img_msg, sensor_msgs::image_encodings::MONO8);
 
   cv::Mat img = ptr->image.clone();
+  //cv::imshow("every image", img);
+  //cv::waitKey(5);
 
   return img;
 }
@@ -133,7 +138,7 @@ void calc_process(const CameraPtr &cam)
           std::cout << leftImg;
 
           bool isCalOk = calcCamPose(time, image, cam, Twc);
-
+          isCalOKvec.push_back(isCalOk);
           std::cout << "\b\b\b\b\b";
           if(!isCalOk)//zdf
           {
@@ -188,11 +193,13 @@ void calc_process(const CameraPtr &cam)
             cam_tmp.Rcl =  Rcl;
             cam_tmp.tlc =  tlc;
             camDatas.push_back(cam_tmp);
+            std::cout << "image size = " << camDatas.size() << std::endl;
           }
           t_last = time;
           Rwl = Rwc1;
           twl = twc;
           first = false;
+          //std::this_thread::sleep_for(std::chrono::microseconds(3000));   //间隔3ms
         }
         else
         {

@@ -13,6 +13,7 @@ void readParaFromFile(std::string filename, std::vector<double>& paras)
    cv::FileStorage fs(filename, cv::FileStorage::READ);
   if (!fs.isOpened())
   {
+    std::cout << "fail to open config file" << std::endl;
     return;
   }
   freq_cam = static_cast<double>(fs["freq_cam"]);
@@ -53,8 +54,11 @@ void generateDatas( std::vector<double> paras,
                   Eigen::Matrix4d &Trc,
                   double &delta_t_odo)
 {
-  if(paras.empty()) return;
-
+  std::cout << "enter generateDatas" << std::endl;
+  if(paras.empty()){
+    std::cout << "paras is empty" << std::endl;
+    return;
+  } 
   double freq_cam = paras[0] , freq_odo = paras[1];
   double v_left = paras[2],v_right = paras[3];
   double radius_l = paras[4] , radius_r = paras[5], axle = paras[6];
@@ -84,6 +88,7 @@ void generateDatas( std::vector<double> paras,
   Eigen::Matrix4d Twl_odo = Eigen::Matrix4d::Identity();
   for (double t = 0; t < double(datas_num*delta_t_odo); t += delta_t_odo)
   {
+    std::cout << t << std::endl;
     double v_left_tmp = v_left * cos(t) ;
     double v_right_tmp = v_right * sin(t);
     double lin_vel = 0.5*(v_left_tmp*radius_l + v_right_tmp*radius_r);
