@@ -1,19 +1,17 @@
 %YAML:1.0
 ---
-wheel_topic: "/kobuki_node/wheel_odo"
-image_topic: "/mynteye/left/image_color"
+wheel_topic: "/wheel_data"
+image_topic: "/cam_data"
 camera_name: camera
-model_type: PINHOLE
-image_width: 640
+model_type: KANNALA_BRANDT
+image_width: 752
 image_height: 480
-distortion_parameters:
-   k1: -0.2826607142027938
-   k2: 0.06525996488109939
-   p1: -5.1937966787762915e-06
-   p2: 0.0004762789878154608
 projection_parameters:
-   fx: 353.240756723929
-   fy: 353.3235419464148
-   cx: 314.27156900243574
-   cy: 245.2125497878924
-
+   k2: -0.02276964188728029
+   k3: -0.0005695758631369943
+   k4: -0.002622395611508031
+   k5: 0.00017455318273893808
+   mu: 367.049931000148
+   mv: 366.94446918887405
+   u0: 368.7202381120387
+   v0: 241.13814795878562

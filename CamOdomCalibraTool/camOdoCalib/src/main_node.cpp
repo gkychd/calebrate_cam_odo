@@ -22,16 +22,17 @@
 #include "calc_cam_pose/calcCamPose.h"
 
 #include "solveQyx.h" 
-#define PI 3.1415926535897931
+#include "cam_odo_cal/cam_data.h"
 typedef boost::shared_ptr<nav_msgs::Odometry const> OdomConstPtr;
+typedef boost::shared_ptr<cam_odo_cal::cam_data const> CamConstPtr;
 
 std::queue<OdomConstPtr> odo_buf;
 std::queue<sensor_msgs::ImageConstPtr> img_buf;
 std::mutex m_buf;
-bool hasImg = false ;//zdf
+bool start = false ;//zdf
 std::vector<data_selection::odo_data> odoDatas;
 std::vector<data_selection::cam_data> camDatas;
-std::vector<bool> isCalOKvec;
+
 //record the first frame calculated successfully
 bool fisrt_frame = true;
 Eigen::Matrix3d Rwc0;
@@ -43,6 +44,7 @@ int frame_index = 0;
 void wheel_callback(const OdomConstPtr &odo_msg)
 {
   double time = odo_msg->header.stamp.toSec();
+  //ROS_INFO("odoDatas.time: %lf", time);
   Eigen::Vector3d linear = { odo_msg->twist.twist.linear.x,
     odo_msg->twist.twist.linear.y,
     odo_msg->twist.twist.linear.z };
@@ -52,64 +54,49 @@ void wheel_callback(const OdomConstPtr &odo_msg)
       data_selection::odo_data odo_tmp;
 
     odo_tmp.time = time;
-    odo_tmp.v_left = linear[0] / 0.038 - angular[2]*0.232 / (2*0.038);// linear velcity of x axis           0.038为左轮径  0.232为轮距
-    odo_tmp.v_right = linear[0] / 0.038 + angular[2]*0.232 / (2*0.038);// angular velcity of z axis   0.038为右轮径  0.232为轮距
+    odo_tmp.v_left = linear[0] / 0.1 - angular[2]*0.57 / (2*0.1);// linear velcity of x axis 
+    odo_tmp.v_right = linear[0] / 0.1 + angular[2]*0.57 / (2*0.1);// angular velcity of z axis
     odoDatas.push_back(odo_tmp);
-    //std::cout << "**************odo size = " << odoDatas.size() << std::endl;
+    //ROS_INFO("odoDatas.size: %d", odoDatas.size());
   }
 
-void image_callback(const sensor_msgs::ImageConstPtr &img_msg)
+void cam_callback(const CamConstPtr &img_msg)
 {
-  std::cout << "image received" << std::endl;
-  if(!halfFreq)
-  {
-    m_buf.lock();
-    img_buf.push(img_msg);
-    std::cout << "*************image receive size = " << img_buf.size() << std::endl;
-    m_buf.unlock(); 
+  data_selection::cam_data cam_tmp;
+  Eigen::Quaterniond qcl;
+  Eigen::Matrix3d Rcl;
+  qcl.w() = img_msg->qcl[0];
+  qcl.x() = img_msg->qcl[1];
+  qcl.y() = img_msg->qcl[2];
+  qcl.z() = img_msg->qcl[3];
+  //四元数---->旋转矩阵
+  Rcl = qcl.normalized().toRotationMatrix();
+  //四元数----->旋转向量
+  Eigen::AngleAxisd rotation_vector(qcl);
+  Eigen::Vector3d axis = rotation_vector.axis();
+  double angle = rotation_vector.angle();
+
+  cam_tmp.start_t = img_msg->start_t;
+  cam_tmp.end_t = img_msg->end_t;
+  //cam_tmp.theta_y = theta_y;
+  cam_tmp.deltaTheta = img_msg->deltaTheta; // cam_tmp.deltaTheta is deltaTheta_lc
+  cam_tmp.axis = axis;
+  cam_tmp.Rcl =  Rcl;
+  if(cam_tmp.axis[1] < 0){
+    cam_tmp.axis *= -1;
+    cam_tmp.deltaTheta *= -1;
   }
-  else
-  {
-    frame_index++;
-    if(frame_index % 2 ==  0)
-    {
-      m_buf.lock();
-      img_buf.push(img_msg);
-      m_buf.unlock(); 
-    }
-   } 
-}
-
-cv::Mat getImageFromMsg(const sensor_msgs::ImageConstPtr &img_msg)
-{
-  cv_bridge::CvImageConstPtr ptr;
-  if (img_msg->encoding == "8UC1")
-  {
-    sensor_msgs::Image img;
-    img.header = img_msg->header;
-    img.height = img_msg->height;
-    img.width = img_msg->width;
-    img.is_bigendian = img_msg->is_bigendian;
-    img.step = img_msg->step;
-    img.data = img_msg->data;
-    img.encoding = "mono8";
-    ptr = cv_bridge::toCvCopy(img, sensor_msgs::image_encodings::MONO8);
-  }
-  else
-    ptr = cv_bridge::toCvCopy(img_msg, sensor_msgs::image_encodings::MONO8);
-
-  cv::Mat img = ptr->image.clone();
-  //cv::imshow("every image", img);
-  //cv::waitKey(5);
-
-  return img;
+  cam_tmp.tlc[0] =  img_msg->tlc[0];
+  cam_tmp.tlc[1] =  img_msg->tlc[1];
+  cam_tmp.tlc[2] =  img_msg->tlc[2];
+  camDatas.push_back(cam_tmp);
+  ROS_INFO("camDatas.size: %d", camDatas.size());
 }
 
 // extract images with same timestamp from two topics
 void calc_process(const CameraPtr &cam)
 {
   Eigen::Matrix3d Rwl;
-  //Eigen::Matrix3d Rwl2;
   Eigen::Vector3d twl;
   double t_last = 0.0;//time of last image
   bool first = true; //judge if last frame was calculated successfully 
@@ -117,157 +104,45 @@ void calc_process(const CameraPtr &cam)
   std::cout << std::endl << "images counts waiting for processing: " << std::endl;
   while (1)
   {
-        cv::Mat image;
-        std_msgs::Header header;
-        double time = 0;
-        m_buf.lock();
-        if (!img_buf.empty())
-        {
-          time = img_buf.front()->header.stamp.toSec();
-          header = img_buf.front()->header;
-          image = getImageFromMsg(img_buf.front());
-          img_buf.pop();
-        }
-        m_buf.unlock();
-        if (!image.empty())
-        {
-          hasImg = true;
-          Eigen::Matrix4d Twc;
-
-          int leftImg = img_buf.size();
-          //std::cout.width(5);
-          //std::cout << "left img: " << leftImg << std::endl;
-
-          bool isCalOk = calcCamPose(time, image, cam, Twc);
-          isCalOKvec.push_back(isCalOk);
-          std::cout << "\b\b\b\b\b";
-          if(!isCalOk)//zdf
-          {
-            first = true;
-            continue;
-          }
-          Eigen::Matrix3d Rwc = Twc.block<3, 3>(0, 0);
-          Eigen::Vector3d twc = Twc.block<3, 1>(0, 3);
-          /*
-          Eigen::Matrix3d Rcc1;
-          double angle = PI / 4;
-          Rcc1 <<  1, 0, 0,
-                            0, cos(angle), -sin(angle),
-                            0, sin(angle), cos(angle);
-          Eigen::Matrix3d Rwc1;
-          */
-          //Eigen::Matrix3d Rwc2;
-          //Rwc2 = Rwc;
-          //debug
-          /*
-          Eigen::Quaterniond qwc(Rwc1);
-          Eigen::AngleAxisd rotation_vector_wc(qwc);
-          Eigen::Vector3d axis_wc = rotation_vector_wc.axis();
-          std::cout << "After rotion, rx = " << axis_wc[0] << std::endl;
-          std::cout << "After rotion, ry = " << axis_wc[1] << std::endl;
-          std::cout << "After rotion, rz = " << axis_wc[2] << std::endl;
-          */
-          if(fisrt_frame)
-          {
-            Rwc0 = Rwc;
-            twc0 = twc;
-            fisrt_frame = false;
-            continue;
-          }
-          //judge if the last frame was calculated successfully
-          if (!first)
-          {
-            //Todo zdf
-            // Eigen::Vector3d eulerAngle_wc = Rwc.eulerAngles(2,1,0);//ZYX
-            // Eigen::Vector3d eulerAngle_wl = Rwl.eulerAngles(2,1,0);
-            // double theta_y = eulerAngle_wc[1] - eulerAngle_wl[1];
-
-            Eigen::Matrix3d Rcl = Rwc.inverse() * Rwl;
-            //Eigen::Matrix3d Rcl2 = Rwc2.inverse() * Rwl2;
-            //Eigen::Quaterniond q_cl2(Rcl2);
-            Eigen::Quaterniond q_cl(Rcl);
-
-            //Eigen::AngleAxisd rotation_vector2(q_cl2);
-            //Eigen::Vector3d axis2 = rotation_vector2.axis();
-            //std::cout << "before rotion, rx = " << axis2[0] << std::endl;
-            //std::cout << "before rotion, ry = " << axis2[1] << std::endl;
-            //std::cout << "before rotion, rz = " << axis2[2] << std::endl;
-
-            Eigen::AngleAxisd rotation_vector(q_cl);
-            Eigen::Vector3d axis = rotation_vector.axis();
-            std::cout << "before rotion, rx = " << axis[0] << std::endl;
-            std::cout << "before rotion, ry = " << axis[1] << std::endl;
-            std::cout << "before rotion, rz = " << axis[2] << std::endl;
-
-            double deltaTheta_cl = rotation_vector.angle();
-              
-            if(axis(2) < 0)   //c1系z轴垂直地面向上
-            {
-              deltaTheta_cl *= -1;
-              axis *= -1;
-            } 
-            std::cout << "deltaTheta = " << deltaTheta_cl << std::endl;
-            //Eigen::Vector3d tcl = -Rwc.inverse() * (twc - twl);
-            Eigen::Vector3d tlc = -Rwl.inverse() * (twl - twc);
-
-            data_selection::cam_data cam_tmp;
-            cam_tmp.start_t = t_last;
-            cam_tmp.end_t = time;
-            //cam_tmp.theta_y = theta_y;
-            cam_tmp.deltaTheta = -deltaTheta_cl; // cam_tmp.deltaTheta is deltaTheta_lc
-            cam_tmp.axis = axis;
-            cam_tmp.Rcl =  Rcl;
-            cam_tmp.tlc =  tlc;
-            camDatas.push_back(cam_tmp);
-            std::cout << "image size = " << camDatas.size() << std::endl;
-          }
-          t_last = time;
-          Rwl = Rwc;
-          //Rwl2 = Rwc2;
-          twl = twc;
-          first = false;
-          //std::this_thread::sleep_for(std::chrono::microseconds(3000));   //间隔3ms
-        }
-        else
-        {
-            if(hasImg)
-            {
-              SolveQyx cSolveQyx;
-
-              std::cout << "============ calibrating... ===============" << std::endl;
-              data_selection ds;
-              std::vector<data_selection::sync_data> sync_result;
-              ds.selectData(odoDatas,camDatas,sync_result);
-
-              //first estimate the Ryx and correct tlc of camera
-              Eigen::Matrix3d Ryx;
-              cSolveQyx.estimateRyx(sync_result,Ryx);
-              cSolveQyx.correctCamera(sync_result,camDatas,Ryx);
-
-              //calibrate r_L  r_R  axle  lx  ly  yaw
-              cSolver cSolve;
-              cSolver::calib_result paras;//radius_l,radius_r,axle,l[3]
-              cSolve.calib(sync_result, 4,paras); // by svd
-
-               //secondly estimate the Ryx
-              cSolveQyx.estimateRyx(sync_result,Ryx);
-
-              //refine all the extrinal parameters
-              cSolveQyx.refineExPara(sync_result,paras,Ryx);
-              
-              break;
-          }  
-      }
-
+    if(camDatas.size() == 1482){
+      start = true;
     }
+    if(start){
+      SolveQyx cSolveQyx;
+      std::vector<data_selection::cam_data> camDatas2 = camDatas;
+      std::vector<data_selection::odo_data> odoDatas2 = odoDatas;
+      std::cout << "============ calibrating... ===============" << std::endl;
+      data_selection ds;
+      std::vector<data_selection::sync_data> sync_result;
+      ds.selectData(odoDatas2,camDatas2,sync_result);
 
+     //first estimate the Ryx and correct tlc of camera
+     Eigen::Matrix3d Ryx;
+     cSolveQyx.estimateRyx(sync_result,Ryx);
+     std::cout << "cam.size(): " << camDatas2.size() << std::endl;
+     std::cout << "sync_result.size(): " << sync_result.size() << std::endl;
+     cSolveQyx.correctCamera(sync_result,camDatas2,Ryx);
+
+      //calibrate r_L  r_R  axle  lx  ly  yaw
+      cSolver cSolve;
+      cSolver::calib_result paras;//radius_l,radius_r,axle,l[3]
+      cSolve.calib(sync_result, 4,paras); // by svd
+
+      //secondly estimate the Ryx
+      cSolveQyx.estimateRyx(sync_result,Ryx);
+
+      //refine all the extrinal parameters
+      cSolveQyx.refineExPara(sync_result,paras,Ryx);
+      
+      break;
+    } 
     std::chrono::milliseconds dura(2);
     std::this_thread::sleep_for(dura);
+ }
 }
-
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "calebrate_cam_odo");
+    ros::init(argc, argv, "simulation_calebration");
     ros::NodeHandle n("~");
     ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info);
 
@@ -281,12 +156,13 @@ int main(int argc, char **argv)
     std::string WHEEL_TOPIC, IMAGE_TOPIC;
     fsSettings["wheel_topic"] >> WHEEL_TOPIC;
     fsSettings["image_topic"] >> IMAGE_TOPIC;
-
+    std::cout << "wheel_topic: " << WHEEL_TOPIC << std::endl;
+    std::cout << "image_topic: " << IMAGE_TOPIC << std::endl;
     CameraPtr camera = CameraFactory::instance()->generateCameraFromYamlFile(config_file);
 
     //the following three rows are to run the calibrating project through playing bag package
     ros::Subscriber sub_imu = n.subscribe(WHEEL_TOPIC, 500, wheel_callback, ros::TransportHints().tcpNoDelay());
-    ros::Subscriber sub_img = n.subscribe(IMAGE_TOPIC, 200, image_callback);
+    ros::Subscriber sub_img = n.subscribe(IMAGE_TOPIC, 200, cam_callback);
     std::thread calc_thread = std::thread{calc_process, std::ref(camera)};
     
      ros::spin();

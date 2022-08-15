@@ -6,13 +6,15 @@ set(CMAKE_CXX_FLAGS "-std=c++11")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
 
 find_package(catkin REQUIRED COMPONENTS
+    sensor_msgs
     roscpp
     std_msgs
     geometry_msgs
     nav_msgs
     tf
     cv_bridge
-    image_transport)
+    image_transport
+    message_generation)
 
 find_package(OpenCV REQUIRED)
 
@@ -30,9 +32,30 @@ include_directories(
   ${EIGEN3_INCLUDE_DIR}
 )
 
+add_message_files(
+    FILES
+    cam_data.msg
+)
 
-
-catkin_package()
+generate_messages(
+    DEPENDENCIES
+    sensor_msgs
+    std_msgs
+    nav_msgs
+    
+)
+catkin_package(
+#  INCLUDE_DIRS include
+#  LIBRARIES txt_to_rosmsg
+    CATKIN_DEPENDS
+    roscpp 
+    sensor_msgs 
+    std_msgs
+    nav_msgs
+    message_runtime
+    message_generation
+    #DEPENDS system_lib
+)
 
 SET(CSM_SRC 
   camOdoCalib/src/csm/laser_data.cpp

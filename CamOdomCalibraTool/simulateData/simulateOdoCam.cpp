@@ -13,7 +13,6 @@ void readParaFromFile(std::string filename, std::vector<double>& paras)
    cv::FileStorage fs(filename, cv::FileStorage::READ);
   if (!fs.isOpened())
   {
-    std::cout << "fail to open config file" << std::endl;
     return;
   }
   freq_cam = static_cast<double>(fs["freq_cam"]);
@@ -54,11 +53,8 @@ void generateDatas( std::vector<double> paras,
                   Eigen::Matrix4d &Trc,
                   double &delta_t_odo)
 {
-  std::cout << "enter generateDatas" << std::endl;
-  if(paras.empty()){
-    std::cout << "paras is empty" << std::endl;
-    return;
-  } 
+  if(paras.empty()) return;
+
   double freq_cam = paras[0] , freq_odo = paras[1];
   double v_left = paras[2],v_right = paras[3];
   double radius_l = paras[4] , radius_r = paras[5], axle = paras[6];
@@ -88,7 +84,6 @@ void generateDatas( std::vector<double> paras,
   Eigen::Matrix4d Twl_odo = Eigen::Matrix4d::Identity();
   for (double t = 0; t < double(datas_num*delta_t_odo); t += delta_t_odo)
   {
-    std::cout << t << std::endl;
     double v_left_tmp = v_left * cos(t) ;
     double v_right_tmp = v_right * sin(t);
     double lin_vel = 0.5*(v_left_tmp*radius_l + v_right_tmp*radius_r);
@@ -223,16 +218,16 @@ void saveDatas(std::vector<Eigen::Matrix4d> Twc_odos, std::vector<odo_data> odoD
      cam_data &t = camDatas[i];
      Eigen::Quaterniond qcl(t.Rcl);
      Eigen::Quaterniond qx(t.R_x);
-     ofile_cam <<std::fixed<< t.start_t<<" " <<t.end_t<<" "<<t.tcl_length<<" "<<t.theta_y<<" "<<t.deltaTheta<<" "<<qcl.w()<<" "<<
-     qcl.x()<<" "<<qcl.y()<<" "<<qcl.z()<<" "<<t.tlc[0]<<" "<<t.tlc[1]<<" "<<t.tlc[2]<<" "<<qx.w()<<" "<<qx.x()<<" "<<qx.y()<<
-     " "<<qx.z()<<std::endl;
+     ofile_cam <<std::fixed<< t.start_t<<"," <<t.end_t<<","<<t.tcl_length<<","<<t.theta_y<<","<<t.deltaTheta<<","<<qcl.w()<<","<<
+     qcl.x()<<","<<qcl.y()<<","<<qcl.z()<<","<<t.tlc[0]<<","<<t.tlc[1]<<","<<t.tlc[2]<<","<<qx.w()<<","<<qx.x()<<","<<qx.y()<<
+     ","<<qx.z()<<std::endl;
    }
    ofile_cam.close();
    ofile_odo <<"time,lin_vel,ang_vel,distance,theta"<<std::endl;
    for (unsigned int i = 0; i < odoDatas.size(); ++i)
    {
       odo_data &t = odoDatas[i];
-      ofile_odo << std::fixed << t.time <<" "<<t.lin_vel<<" "<<t.ang_vel<<" "<<t.distance<<" "<<t.theta<<std::endl;
+      ofile_odo << std::fixed << t.time <<","<<t.lin_vel<<","<<t.ang_vel<<","<<t.distance<<","<<t.theta<<std::endl;
   }
   ofile_odo.close();
 

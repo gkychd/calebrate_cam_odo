@@ -11,7 +11,7 @@ int main(int argc, char** argv)
     std::string path[2];
     path[0] = argv[1], path[1] = argv[2];
 
-    std::string config_file = "/home/gky/calibrate/catkin_cam_odo/src/CamOdomCalibraTool/simulateData/config.yaml";
+    std::string config_file = "config.yaml";
     std::vector<double> paras;
     readParaFromFile(config_file, paras);
 

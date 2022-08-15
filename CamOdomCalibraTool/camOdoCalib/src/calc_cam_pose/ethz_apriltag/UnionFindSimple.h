@@ -14,7 +14,7 @@ class UnionFindSimple {
   };
 
  public:
-  explicit UnionFindSimple(int maxId) : data(maxId) { init(); }; //explicit当构造函数只有一个参数时，防止隐式转换
+  explicit UnionFindSimple(int maxId) : data(maxId) { init(); };
 
   int getSetSize(int thisId) { return data[getRepresentative(thisId)].size; }
 

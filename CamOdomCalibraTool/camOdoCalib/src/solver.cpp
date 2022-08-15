@@ -152,7 +152,7 @@ bool cSolver::solve(const std::vector<data_selection::sync_data> &calib_data,
   {
     std::cout << colouredString("Matrix A is almost singular.", RED, BOLD) << std::endl;
     return 0;
-  }//奇异矩阵，非满秩
+  }
 
   // Ay = g --> y = inv(A)g; A square matrix;
   Eigen::Vector2d y = Eigen::Vector2d::Zero();

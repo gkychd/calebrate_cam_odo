@@ -51,10 +51,7 @@ void data_selection::camOdoAlign(OdomPtr &odoDatas, CamPtr &camDatas,
         double tlc_length = camDatas[i].tlc.norm();
         if(tlc_length < 1e-4)
             continue;       
-        //std::cout << "after rotion, rx = " << camDatas[i].axis(0) << std::endl;
-       //std::cout << "after rotion, ry = " << camDatas[i].axis(1) << std::endl;
-        //std::cout << "after rotion, rz = " << camDatas[i].axis(2) << std::endl;
-        if(camDatas[i].axis(2) < 0.96)
+        if(camDatas[i].axis(1) < 0.96)
             continue;
 
         data_selection::odo_data   odo_start, odo_end;
@@ -156,7 +153,7 @@ void data_selection::camOdoAlign(OdomPtr &odoDatas, CamPtr &camDatas,
                 //       z               y         |            z               y              
 
             sync_tmp.scan_match_results[0] = camDatas[i].tlc[0];
-            sync_tmp.scan_match_results[1] = camDatas[i].tlc[1];
+            sync_tmp.scan_match_results[1] = camDatas[i].tlc[2];
             sync_tmp.scan_match_results[2] = camDatas[i].deltaTheta;
 
             sync_tmp.tcl_cam = -camDatas[i].Rcl * camDatas[i].tlc;
@@ -185,7 +182,7 @@ void data_selection::camOdoAlign(OdomPtr &odoDatas, CamPtr &camDatas,
                 //       z               y         |            z               y
 
             sync_tmp.scan_match_results[0] = camDatas[i].tlc[0];
-            sync_tmp.scan_match_results[1] = camDatas[i].tlc[1];
+            sync_tmp.scan_match_results[1] = camDatas[i].tlc[2];
             //double angle_tmp = (camDatas[i].theta_y > 0.0?1:(-1)) * camDatas[i].deltaTheta;
             sync_tmp.scan_match_results[2] = camDatas[i].deltaTheta;
 
