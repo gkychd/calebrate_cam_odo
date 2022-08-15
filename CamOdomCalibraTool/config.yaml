@@ -1,0 +1,19 @@
+%YAML:1.0
+---
+wheel_topic: "/kobuki_node/wheel_odo"
+image_topic: "/mynteye/left/image_color"
+camera_name: camera
+model_type: PINHOLE
+image_width: 640
+image_height: 480
+distortion_parameters:
+   k1: -0.2826607142027938
+   k2: 0.06525996488109939
+   p1: -5.1937966787762915e-06
+   p2: 0.0004762789878154608
+projection_parameters:
+   fx: 353.240756723929
+   fy: 353.3235419464148
+   cx: 314.27156900243574
+   cy: 245.2125497878924
+

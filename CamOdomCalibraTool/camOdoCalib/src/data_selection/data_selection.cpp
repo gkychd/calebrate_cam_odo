@@ -51,7 +51,10 @@ void data_selection::camOdoAlign(OdomPtr &odoDatas, CamPtr &camDatas,
         double tlc_length = camDatas[i].tlc.norm();
         if(tlc_length < 1e-4)
             continue;       
-        if(camDatas[i].axis(2) > -0.96)
+        //std::cout << "after rotion, rx = " << camDatas[i].axis(0) << std::endl;
+       //std::cout << "after rotion, ry = " << camDatas[i].axis(1) << std::endl;
+        //std::cout << "after rotion, rz = " << camDatas[i].axis(2) << std::endl;
+        if(camDatas[i].axis(2) < 0.96)
             continue;
 
         data_selection::odo_data   odo_start, odo_end;

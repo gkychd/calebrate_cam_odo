@@ -223,16 +223,16 @@ void saveDatas(std::vector<Eigen::Matrix4d> Twc_odos, std::vector<odo_data> odoD
      cam_data &t = camDatas[i];
      Eigen::Quaterniond qcl(t.Rcl);
      Eigen::Quaterniond qx(t.R_x);
-     ofile_cam <<std::fixed<< t.start_t<<"," <<t.end_t<<","<<t.tcl_length<<","<<t.theta_y<<","<<t.deltaTheta<<","<<qcl.w()<<","<<
-     qcl.x()<<","<<qcl.y()<<","<<qcl.z()<<","<<t.tlc[0]<<","<<t.tlc[1]<<","<<t.tlc[2]<<","<<qx.w()<<","<<qx.x()<<","<<qx.y()<<
-     ","<<qx.z()<<std::endl;
+     ofile_cam <<std::fixed<< t.start_t<<" " <<t.end_t<<" "<<t.tcl_length<<" "<<t.theta_y<<" "<<t.deltaTheta<<" "<<qcl.w()<<" "<<
+     qcl.x()<<" "<<qcl.y()<<" "<<qcl.z()<<" "<<t.tlc[0]<<" "<<t.tlc[1]<<" "<<t.tlc[2]<<" "<<qx.w()<<" "<<qx.x()<<" "<<qx.y()<<
+     " "<<qx.z()<<std::endl;
    }
    ofile_cam.close();
    ofile_odo <<"time,lin_vel,ang_vel,distance,theta"<<std::endl;
    for (unsigned int i = 0; i < odoDatas.size(); ++i)
    {
       odo_data &t = odoDatas[i];
-      ofile_odo << std::fixed << t.time <<","<<t.lin_vel<<","<<t.ang_vel<<","<<t.distance<<","<<t.theta<<std::endl;
+      ofile_odo << std::fixed << t.time <<" "<<t.lin_vel<<" "<<t.ang_vel<<" "<<t.distance<<" "<<t.theta<<std::endl;
   }
   ofile_odo.close();
 

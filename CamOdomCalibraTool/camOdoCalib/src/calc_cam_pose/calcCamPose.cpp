@@ -45,17 +45,18 @@ void FindTargetCorner(cv::Mat &img_raw, const PatternType &pt,
   }
   else if (APRIL == pt)
   {
-    //const int april_rows = 6;
-    const int april_cols = 4;
-    const double tag_sz = 0.048;
-    const double tag_spacing_sz = 0.06; // 0.048 + 0.012
+    const int april_rows = 6;
+    const int april_cols = 6;
+    const double tag_sz = 0.03;
+    const double tag_spacing_sz = 0.039; // 0.048 + 0.012
 
     AprilTags::TagCodes tagCodes(AprilTags::tagCodes36h11);
     AprilTags::TagDetector detector(tagCodes);
     std::vector<AprilTags::TagDetection> detections =
         detector.extractTags(img_raw);
+    std::cout << "detections.size: " << detections.size() << std::endl;
     //if (detections.size() == april_rows * april_cols)
-    if (detections.size() > 15)
+    if (detections.size() > 12)
     {
       std::sort(detections.begin(), detections.end(),
                 AprilTags::TagDetection::sortByIdCompare);
@@ -114,37 +115,37 @@ void FindTargetCorner(cv::Mat &img_raw, const PatternType &pt,
                                       tag_spacing_sz * tag_row, 0.0));
         p2ds.emplace_back(cv::Point2f(tag_corners.at<float>(index, 0),
                                       tag_corners.at<float>(index, 1)));
-        // cv::circle(img_raw, p2ds.back(), 3, cv::Scalar(0, 255, 0));
-        // std::cout << index++ << " " << p3ds.back() << std::endl;
-        // cv::imshow("apriltag_detection", img_raw);
-        // cv::waitKey(0);
+         //cv::circle(img_raw, p2ds.back(), 3, cv::Scalar(0, 255, 0));
+         //std::cout << index << " " << p3ds.back() << std::endl;
+         //cv::imshow("apriltag_detection", img_raw);
+         //cv::waitKey(0);
         ++index;
         p3ds.emplace_back(cv::Point3f(tag_spacing_sz * tag_col + tag_sz,
                                       tag_spacing_sz * tag_row, 0.0));
         p2ds.emplace_back(cv::Point2f(tag_corners.at<float>(index, 0),
                                       tag_corners.at<float>(index, 1)));
-        // cv::circle(img_raw, p2ds.back(), 3, cv::Scalar(0, 255, 0));
-        // std::cout << index++ << " " << p3ds.back() << std::endl;
-        // cv::imshow("apriltag_detection", img_raw);
-        // cv::waitKey(0);
+         //cv::circle(img_raw, p2ds.back(), 3, cv::Scalar(0, 255, 0));
+         //std::cout << index << " " << p3ds.back() << std::endl;
+         //cv::imshow("apriltag_detection", img_raw);
+         //cv::waitKey(0);
         ++index;
         p3ds.emplace_back(cv::Point3f(tag_spacing_sz * tag_col + tag_sz,
                                       tag_spacing_sz * tag_row + tag_sz, 0.0));
         p2ds.emplace_back(cv::Point2f(tag_corners.at<float>(index, 0),
                                       tag_corners.at<float>(index, 1)));
-        // cv::circle(img_raw, p2ds.back(), 3, cv::Scalar(0, 255, 0));
-        // std::cout << index++ << " " << p3ds.back() << std::endl;
-        // cv::imshow("apriltag_detection", img_raw);
-        // cv::waitKey(0);
+         //cv::circle(img_raw, p2ds.back(), 3, cv::Scalar(0, 255, 0));
+         //std::cout << index << " " << p3ds.back() << std::endl;
+         //cv::imshow("apriltag_detection", img_raw);
+         //cv::waitKey(0);
         ++index;
         p3ds.emplace_back(cv::Point3f(tag_spacing_sz * tag_col,
                                       tag_spacing_sz * tag_row + tag_sz, 0.0));
         p2ds.emplace_back(cv::Point2f(tag_corners.at<float>(index, 0),
                                       tag_corners.at<float>(index, 1)));
-        // cv::circle(img_raw, p2ds.back(), 3, cv::Scalar(0, 255, 0));
-        // std::cout << index++ << " " << p3ds.back() << std::endl;
-        // cv::imshow("apriltag_detection", img_raw);
-        // cv::waitKey(0);
+         //cv::circle(img_raw, p2ds.back(), 3, cv::Scalar(0, 255, 0));
+         //std::cout << index << " " << p3ds.back() << std::endl;
+         //cv::imshow("apriltag_detection", img_raw);
+         //cv::waitKey(0);
         ++index;
       }
     }
@@ -186,17 +187,17 @@ bool EstimatePose(const std::vector<cv::Point3f> &p3ds,
   cv::cv2eigen(cv_t, tcw);
   //这里的Twc实则为Twc1
   Twc.block<3, 3>(0, 0) = Rc1w.inverse();
-  Twc.block<3, 1>(0, 3) = -Rc1w.inverse() * tcw;
+  Twc.block<3, 1>(0, 3) = -Rcw.inverse() * tcw;
 
   std::vector<Eigen::Vector3d> axis;
   axis.push_back(Rc1w * Eigen::Vector3d(0, 0, 0) + tcw);
-  axis.push_back(Rc1w * Eigen::Vector3d(0.5, 0, 0) + tcw);
-  axis.push_back(Rc1w * Eigen::Vector3d(0, 0.5, 0) + tcw);
-  axis.push_back(Rc1w * Eigen::Vector3d(0, 0, 0.5) + tcw);
+  axis.push_back(Rc1w * Eigen::Vector3d(0.2, 0, 0) + tcw);
+  axis.push_back(Rc1w * Eigen::Vector3d(0, 0.2, 0) + tcw);
+  axis.push_back(Rc1w * Eigen::Vector3d(0, 0, 0.2) + tcw);
   std::vector<Eigen::Vector2d> imgpts(4);
   for (int i = 0; i < 4; ++i)
   {
-    cam->spaceToPlane(axis[i], imgpts[i]);      //将这4个相机系上的点投影到相机平面得到图像殿（u、v）
+    cam->spaceToPlane(axis[i], imgpts[i]);      //将这4个相机系上的点投影到相机平面得到图像点（u、v）
   }
   // cv::projectPoints(axis, cv_r, cv_t, K, dist, imgpts);
   cv::line(img_raw, cv::Point2f(imgpts[0](0), imgpts[0](1)), cv::Point2f(imgpts[1](0), imgpts[1](1)), cv::Scalar(255, 0, 0), 2);//BGR
