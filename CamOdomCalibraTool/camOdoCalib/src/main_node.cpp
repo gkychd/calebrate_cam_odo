@@ -55,7 +55,7 @@ void wheel_callback(const OdomConstPtr &odo_msg)
     odo_tmp.v_left = linear[0] / 0.038 - angular[2]*0.232 / (2*0.038);// linear velcity of x axis           0.038为左轮径  0.232为轮距
     odo_tmp.v_right = linear[0] / 0.038 + angular[2]*0.232 / (2*0.038);// angular velcity of z axis   0.038为右轮径  0.232为轮距
     odoDatas.push_back(odo_tmp);
-    std::cout << "**************odo size = " << odoDatas.size() << std::endl;
+    //std::cout << "**************odo size = " << odoDatas.size() << std::endl;
   }
 
 void image_callback(const sensor_msgs::ImageConstPtr &img_msg)
@@ -109,6 +109,7 @@ cv::Mat getImageFromMsg(const sensor_msgs::ImageConstPtr &img_msg)
 void calc_process(const CameraPtr &cam)
 {
   Eigen::Matrix3d Rwl;
+  //Eigen::Matrix3d Rwl2;
   Eigen::Vector3d twl;
   double t_last = 0.0;//time of last image
   bool first = true; //judge if last frame was calculated successfully 
@@ -134,8 +135,8 @@ void calc_process(const CameraPtr &cam)
           Eigen::Matrix4d Twc;
 
           int leftImg = img_buf.size();
-          std::cout.width(5);
-          std::cout << leftImg;
+          //std::cout.width(5);
+          //std::cout << "left img: " << leftImg << std::endl;
 
           bool isCalOk = calcCamPose(time, image, cam, Twc);
           isCalOKvec.push_back(isCalOk);
@@ -147,16 +148,28 @@ void calc_process(const CameraPtr &cam)
           }
           Eigen::Matrix3d Rwc = Twc.block<3, 3>(0, 0);
           Eigen::Vector3d twc = Twc.block<3, 1>(0, 3);
+          /*
           Eigen::Matrix3d Rcc1;
           double angle = PI / 4;
           Rcc1 <<  1, 0, 0,
                             0, cos(angle), -sin(angle),
                             0, sin(angle), cos(angle);
           Eigen::Matrix3d Rwc1;
-          Rwc1 = Rwc * Rcc1;
+          */
+          //Eigen::Matrix3d Rwc2;
+          //Rwc2 = Rwc;
+          //debug
+          /*
+          Eigen::Quaterniond qwc(Rwc1);
+          Eigen::AngleAxisd rotation_vector_wc(qwc);
+          Eigen::Vector3d axis_wc = rotation_vector_wc.axis();
+          std::cout << "After rotion, rx = " << axis_wc[0] << std::endl;
+          std::cout << "After rotion, ry = " << axis_wc[1] << std::endl;
+          std::cout << "After rotion, rz = " << axis_wc[2] << std::endl;
+          */
           if(fisrt_frame)
           {
-            Rwc0 = Rwc1;
+            Rwc0 = Rwc;
             twc0 = twc;
             fisrt_frame = false;
             continue;
@@ -169,18 +182,31 @@ void calc_process(const CameraPtr &cam)
             // Eigen::Vector3d eulerAngle_wl = Rwl.eulerAngles(2,1,0);
             // double theta_y = eulerAngle_wc[1] - eulerAngle_wl[1];
 
-            Eigen::Matrix3d Rcl = Rwc1.inverse() * Rwl;
+            Eigen::Matrix3d Rcl = Rwc.inverse() * Rwl;
+            //Eigen::Matrix3d Rcl2 = Rwc2.inverse() * Rwl2;
+            //Eigen::Quaterniond q_cl2(Rcl2);
             Eigen::Quaterniond q_cl(Rcl);
+
+            //Eigen::AngleAxisd rotation_vector2(q_cl2);
+            //Eigen::Vector3d axis2 = rotation_vector2.axis();
+            //std::cout << "before rotion, rx = " << axis2[0] << std::endl;
+            //std::cout << "before rotion, ry = " << axis2[1] << std::endl;
+            //std::cout << "before rotion, rz = " << axis2[2] << std::endl;
 
             Eigen::AngleAxisd rotation_vector(q_cl);
             Eigen::Vector3d axis = rotation_vector.axis();
-            double deltaTheta_cl = rotation_vector.angle();  
+            std::cout << "before rotion, rx = " << axis[0] << std::endl;
+            std::cout << "before rotion, ry = " << axis[1] << std::endl;
+            std::cout << "before rotion, rz = " << axis[2] << std::endl;
+
+            double deltaTheta_cl = rotation_vector.angle();
+              
             if(axis(2) < 0)   //c1系z轴垂直地面向上
             {
               deltaTheta_cl *= -1;
               axis *= -1;
             } 
-
+            std::cout << "deltaTheta = " << deltaTheta_cl << std::endl;
             //Eigen::Vector3d tcl = -Rwc.inverse() * (twc - twl);
             Eigen::Vector3d tlc = -Rwl.inverse() * (twl - twc);
 
@@ -196,7 +222,8 @@ void calc_process(const CameraPtr &cam)
             std::cout << "image size = " << camDatas.size() << std::endl;
           }
           t_last = time;
-          Rwl = Rwc1;
+          Rwl = Rwc;
+          //Rwl2 = Rwc2;
           twl = twc;
           first = false;
           //std::this_thread::sleep_for(std::chrono::microseconds(3000));   //间隔3ms
@@ -240,7 +267,7 @@ void calc_process(const CameraPtr &cam)
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "vins_fusion");
+    ros::init(argc, argv, "calebrate_cam_odo");
     ros::NodeHandle n("~");
     ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info);
 

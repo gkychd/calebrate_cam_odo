@@ -142,7 +142,7 @@ void SolveQyx::refineExPara(std::vector<data_selection::sync_data> sync_result,
     double angle = Pi / 4;
     Rc0c << 1, 0, 0,
                     0, cos(angle), -sin(angle),
-                    0, -sin(angle), cos(angle);
+                    0, sin(angle), cos(angle);
     Eigen::Matrix3d Rrc0 = Rrc * Rc0c.inverse();
     Eigen::Vector3d rotation_vector_rc ;
     q2Euler_zyx(Eigen::Quaterniond(Rrc0) , rotation_vector_rc);
@@ -151,11 +151,14 @@ void SolveQyx::refineExPara(std::vector<data_selection::sync_data> sync_result,
     std::cout << "before refine: trc =  " << trc[0] << "  " << trc[1] << std::endl;
 
     Eigen::Matrix4d Trc = Eigen::Matrix4d::Identity();
-    Trc.block<3,3>(0,0) = Rrc0;
+    Trc.block<3,3>(0,0) = Rrc;
     Trc.block<2,1>(0,3) = trc;
     refineEstimate(Trc, 1.0 ,q_odo,t_odo,q_cam,t_cam);
+    Eigen::Matrix3d Rrc_after = Trc.block<3, 3>(0,0);
+    Eigen::Matrix3d Rrc0_after;
+    Rrc0_after = Rrc_after * Rc0c.inverse();
     Eigen::Vector3d Rrc_zyx;
-    q2Euler_zyx(Eigen::Quaterniond(Trc.block<3,3>(0,0)) , Rrc_zyx);
+    q2Euler_zyx(Eigen::Quaterniond(Rrc0_after) , Rrc_zyx);
     std::cout << std::endl << "after refine: Rrc(YPR) = " << Rrc_zyx[0] << "  " << Rrc_zyx[1] << "  " << Rrc_zyx[2] << std::endl;
     std::cout << "after refine trc = " << Trc(0,3) << "  " << Trc(1,3) << std::endl;
 
